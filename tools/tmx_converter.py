@@ -30,6 +30,7 @@ import struct
 import xml.sax
 import base64
 import zlib
+import random
 
 dump_all = False # wall of text
 check_mobs = True # mob_db.txt
@@ -60,6 +61,14 @@ NPC_MOBS = '_mobs.txt'
 NPC_WARPS = '_warps.txt'
 NPC_IMPORTS = '_import.txt'
 NPC_MASTER_IMPORTS = NPC_IMPORTS
+
+BUTTERFLY_IDS = range(109 + 1002, 118 + 1002)
+BUTTERFLY_IDS.append(53 + 1002)
+BUTTERFLY_COLORS = ["Red", "Green", "DarkBlue", "Yellow", "LightBlue", "Pink", "Black", "Orange", "Purple", "DarkGreen", ""]
+BUTTERFLY_NAMES = []
+
+for i in range(len(BUTTERFLY_IDS)):
+    BUTTERFLY_NAMES.append(BUTTERFLY_COLORS[i] + "Butterfly")
 
 class State(object):
     pass
@@ -245,26 +254,47 @@ class ContentHandler(xml.sax.ContentHandler):
             obj = self.object
             if isinstance(obj, Mob):
                 mob_id = obj.monster_id
-                if mob_id < 1000:
-                    mob_id += 1002
-                if check_mobs:
-                    try:
-                        name = mob_names[mob_id]
-                    except KeyError:
-                        print('Warning: unknown mob ID: %d (%s)' % (mob_id, obj.name))
-                    else:
-                        if name != obj.name:
-                            print('Warning: wrong mob name: %s (!= %s)' % (obj.name, name))
-                            obj.name = name
-                self.mob_ids.add(mob_id)
-                self.mobs.write(
-                    SEPARATOR.join([
-                        '%s.gat,%d,%d,%d,%d' % (self.base, obj.x, obj.y, obj.w, obj.h),
-                        'monster',
-                        obj.name,
-                        '%d,%d,%d,%d,Mob%s::On%d\n' % (mob_id, obj.max_beings, obj.ea_spawn, obj.ea_death, self.base, mob_id),
-                    ])
-                )
+                # randomize the color for Butterfly
+                if mob_id == 53:
+                    mob_num = []
+                    for i in range(len(BUTTERFLY_IDS)):
+                        mob_num.append(0)
+                    for i in range(obj.max_beings):
+                        mob_num[random.randrange(len(BUTTERFLY_IDS))] += 1
+                else:
+                    if mob_id < 1000:
+                        mob_id += 1002
+                    if check_mobs:
+                        try:
+                            name = mob_names[mob_id]
+                        except KeyError:
+                            print('Warning: unknown mob ID: %d (%s)' % (mob_id, obj.name))
+                        else:
+                            if name != obj.name:
+                                print('Warning: wrong mob name: %s (!= %s)' % (obj.name, name))
+                                obj.name = name
+                if mob_id == 53:
+                    for i in range(len(BUTTERFLY_IDS)):
+                        if mob_num[i] != 0:
+                            self.mob_ids.add(BUTTERFLY_IDS[i])
+                            self.mobs.write(
+                                SEPARATOR.join([
+                                    '%s.gat,%d,%d,%d,%d' % (self.base, obj.x, obj.y, obj.w, obj.h),
+                                    'monster',
+                                    BUTTERFLY_NAMES[i],
+                                    '%d,%d,%d,%d,Mob%s::On%d\n' % (BUTTERFLY_IDS[i], mob_num[i], obj.ea_spawn, obj.ea_death, self.base, BUTTERFLY_IDS[i]),
+                                ])
+                            )
+                else:
+                    self.mob_ids.add(mob_id)
+                    self.mobs.write(
+                        SEPARATOR.join([
+                            '%s.gat,%d,%d,%d,%d' % (self.base, obj.x, obj.y, obj.w, obj.h),
+                            'monster',
+                            obj.name,
+                            '%d,%d,%d,%d,Mob%s::On%d\n' % (mob_id, obj.max_beings, obj.ea_spawn, obj.ea_death, self.base, mob_id),
+                        ])
+                    )
             elif isinstance(obj, Warp):
                 nx = hasattr(obj, 'dest_tile_x')
                 ny = hasattr(obj, 'dest_tile_y')
